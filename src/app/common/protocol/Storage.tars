@@ -1,0 +1,336 @@
+
+module Base
+{
+
+enum STORAGE_RT
+{
+    S_OK                            = 0,    //成功
+    S_NO_DATA                       = -1,   //没有数据
+    S_ERROR                         = -2,   //失败
+    S_VERSION                       = -3,   //版本冲突
+    S_TIMESTAMP                     = -4,   //时间戳冲突
+    S_TABLE_NAME                    = -5,   //表名不合法(为空)
+    S_TABLE_EXIST                   = -6,   //表已经存在
+    S_TABLE_NOT_EXIST               = -7,   //表不存在
+    S_JSON_FIELD_NOT_EXITS          = -8,   //update时, 字段不存在
+    S_JSON_OPERATOR_NOT_SUPPORT     = -9,   //update时, 操作不支持
+    S_JSON_FIELD_TYPE_ERROR         = -10,  //update时, 字段类型错误
+    S_JSON_VALUE_TYPE_ERROR         = -11,  //update时, 值类型错误
+    S_JSON_VALUE_NOT_JSON           = -12,  //update时, value不是json对象
+    S_QUEUE_NAME                    = -13,  //队列名不合法(为空)
+    S_QUEUE_EXIST                   = -14,  //队列已经存在
+    S_QUEUE_NOT_EXIST               = -15,  //队列不存在
+
+};
+
+struct Options
+{
+    0 optional bool leader = false; //选项, true: 必须在leader执行, false: follower都可以执行
+};
+
+struct StorageKey
+{
+    0 optional string table;    //表名
+    1 optional string mkey;     //主key
+    2 optional string ukey;     //子key
+};
+
+key[StorageKey, table, mkey, ukey];
+
+//version timestamp 只有一个能生效, 优先version
+struct StorageValue
+{
+    0 optional long expireTime = 0;  //写数据时: 淘汰时间(相对时间, 秒), ==0 忽略淘汰(不淘汰); 读取时, 该字段为淘汰的绝对时间(秒)
+    1 optional int version = 0;     //版本号, 读取时框架自动返回(不为0), set时需要将读取到的version设置回存储(存储服务发现version不相等则不让写入), 如果version设置为0, 则总是同意写入
+    2 optional long timestamp = 0;  //覆盖数据时间戳: ==0忽略这个字段的使用;  >0增加覆盖时间戳判断, 更大的timestamp才能覆盖老数据
+    3 optional vector<byte> data;
+};
+
+struct StorageData
+{
+    0 optional StorageKey skey;
+    1 optional StorageValue svalue;
+    2 optional int ret = 0;             //set时无效, getBatch时用来判断数据是否获取到 (STORAGE_RT)
+};
+
+//基本处理规则如下:
+// - SO_ADD 会添加value数据, FT_INTEGER/FT_DOUBLE/FT_BOOLEAN/FT_STRING/FT_ARRAY 有效,
+// - SO_SUB 会减少value数据, FT_INTEGER/FT_DOUBLE/FT_ARRAY 有效
+// - SO_ADD_NO_REPEAT 会添加不重复的元素, FT_ARRAY有效
+// - SO_REPLACE 会替换数据, 所有类型有效
+// - SO_REVERSE 取反, FT_BOOLEAN 有效
+// 注意: 当被操作字段是数组时, 则添加减少的操作既可以是一个元素也可以是一批元素, 如果是一批元素, 此时value是json格式的字符串
+// 当数据不存在 or 字段不存在时:
+// - 如果def缺省值没有设置数据, 则报错(S_NO_DATA, S_JSON_FIELD_NOT_EXITS)
+// - 如果def缺省值设置了数据, 则新增数据/字段, 新增字段且值为def, 类型为value的类型
+enum StorageOperator
+{
+    SO_REPLACE  = 0,
+    SO_ADD      = 1,
+    SO_SUB      = 2,
+    SO_REVERSE  = 3,
+    SO_ADD_NO_REPEAT   = 4,
+};
+
+enum FieldType
+{
+    FT_INTEGER  = 1,
+    FT_DOUBLE   = 2,
+    FT_BOOLEAN  = 3,
+    FT_STRING   = 4,
+    FT_ARRAY    = 5
+};
+
+// 字段是number(FT_INTEGER/FT_DOUBLE), value会转换成数字
+// 字段是bool(FT_BOOLEAN), value设置为"true" or "false"
+// 字段是array(FT_ARRAY), value是json格式的字符串: "[]", 类型为FT_ARRAY
+struct StorageUpdate
+{
+    0 require string field;             //字段名
+    1 require StorageOperator op;       //操作
+    2 optional string value;            //值
+    3 optional FieldType type;       //值的类型
+    4 optional string def;              //缺省值
+};
+
+struct StorageJson
+{
+    0 optional StorageKey skey;
+    1 optional vector<StorageUpdate> supdate; //所有更新都成功才会更新记录, 否则返回失败
+};
+
+//分页查询
+//注意: over 表示否是可以跨mkey, 如果over==false, 表示不允许跨mkey, skey中的mkey必须填写! 遍历的数据都是指定mkey的数据
+//- forward: true, 则表示从小到大, 数据[mkey-ukey, ...), 开始往后遍历limit个, 如果ukey为空, 则表示mkey-头开始遍历
+//- forward: false, 则表示从大到小, 数据(..., mkey-ukey], 开始往前遍历limit个
+//如果over==true, 表示允许跨mkey, skey中的mkey可以不填写, 遍历的数据按照mkey-ukey遍历即可
+
+struct PageReq
+{
+    0 optional StorageKey skey;
+    1 optional int limit = 10;
+    2 optional bool forward = true;
+    3 optional bool include = true;
+    4 optional bool over    = false;
+};
+
+struct QueueData
+{
+    0 optional long expireTime = 0;  //淘汰时间(相对时间, 秒), ==0 忽略淘汰(不淘汰)
+    5 optional vector<byte> data;   //实际数据
+};
+
+//队列插入请求
+struct QueuePushReq
+{
+    0 optional string queue;
+    1 optional bool   back = true;          //true: back, false: front
+    2 optional long expireTime = 0;          //数据在队列中的超时时间(秒), ==0, 则不超时
+    5 optional vector<byte> data;           //数据
+};
+
+//获取队列数据响应
+struct QueuePopReq
+{
+    0 optional string queue;
+    1 optional bool   back = true;          //true: back, false: front
+    2 optional int    count = 1;            //pop的数量
+};
+
+struct QueueRsp
+{
+    0 optional string queue;
+    1 optional long index;                 //在队列中的主索引, 数据在队列中按照index来排序的
+    2 optional long  expireTime;           //超时的绝对时间
+    3 optional vector<byte> data;
+};
+
+struct QueueIndex
+{
+    0 optional string queue;
+    1 optional long index;                 //在队列中的主索引
+};
+
+struct QueuePageReq
+{
+    0 optional string queue;
+    1 optional string index;               //遍历起始的索引, 之所以用string, 为了支持遍历时include这个参数(为空字符串, 则从头/尾遍历)
+    2 optional int limit = 10;
+    3 optional bool forward = true;
+    4 optional bool include = true;
+};
+
+//批量写各种数据, 一次性成功,要么失败
+struct BatchDataReq
+{
+    0 optional vector<StorageData>  sData;
+    1 optional vector<StorageJson>  uData;
+    2 optional vector<QueuePushReq> qData;
+};
+
+struct BatchDataRsp
+{
+    0 optional map<StorageKey, int> sRsp;
+};
+
+interface Storage
+{
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * 创建表
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int createTable(string table);
+
+    /**
+     * 获取所有表
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int listTable(Options opt, out vector<string> tables);
+
+    /**
+     * 删除表
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int deleteTable(string table);
+
+    /**
+     * 是否有数据
+     * @return opt
+     * @return int, S_OK: 成功, S_NO_DATA: 没有数据, <0: 失败
+     */
+    int has(Options opt, StorageKey skey);
+
+    /**
+     * 读取数据
+     * @return opt
+     * @return int, S_OK: 成功, S_NO_DATA: 没有数据, <0: 失败
+     */
+    int get(Options opt, StorageKey skey, out StorageValue data);
+
+    /**
+     * 写数据(StorageData.ret无效)
+     * @return int, S_OK: 成功, <0: 失败
+     */    
+    int set(StorageData data);
+
+    /**
+     * 更新数据
+     * @return int, S_OK: 成功, <0: 失败
+     */   
+    int update(StorageJson data);
+
+    /**
+     * 删除数据(注意如果ukey为空, 则删除所有mkey的数据)
+     * @return int, S_OK: 成功, S_NO_DATA: 没有数据, <0: 失败
+     */
+    int del(StorageKey skey);
+
+    /**
+     * 读取数据, 每条记录StorageData.ret 表示数据是否成功: S_OK: 成功, S_NO_DATA: 没有数据, S_ERROR: 系统错误
+     * @return opt
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int getBatch(Options opt, vector<StorageKey> skey, out vector<StorageData> data);
+
+    /**
+     * 写数据, 每条记录是否更新成功, 可以遍历ret获取到(S_OK/S_VERSION/S_TIMESTAMP/S_TABLE_NAME/S_TABLE_NOT_EXIST)
+     * @return int, S_OK: 成功(所有数据都写入成功), S_ERROR: 错误(至少有一条数据写入失败)
+     */    
+    int setBatch(vector<StorageData> data, out map<StorageKey, int> rsp);
+
+    /**
+     * 批量查询是否有数据, 每条记录是否更新成功, 可以遍历ret获取到(S_OK/S_NO_DATA/S_TIMESTAMP/S_TABLE_NAME/S_TABLE_NOT_EXIST)
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int hasBatch(Options opt, vector<StorageKey> data, out map<StorageKey, int> rsp);
+
+    /**
+     * 批量更新数据(一个字段只能有一条更新数据), 所有记录成功才算成功, 否则不会更新数据
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int updateBatch(vector<StorageJson> data);
+
+    /**
+     * 批量删除数据(注意如果ukey为空, 则删除所有mkey的数据)
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int delBatch(vector<StorageKey> skey);
+
+    /**
+     * 根据主key, 分页遍历数据, 下一次传入上次返回的ukey, 第一次ukey传入空
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int trans(Options opt, PageReq req, out vector<StorageData> data);
+
+    ///////////////////////////////////////////////////////////////////////////////
+    /**
+     * 创建队列(头部index小, 尾部index大)
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int createQueue(string queue);
+
+    /**
+     * 获取所有队列
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int listQueue(Options opt, out vector<string> queues);
+
+    /**
+     * 删除队列
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int deleteQueue(string queue);
+
+    /**
+     * 放入数据到队列
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int push_queue(vector<QueuePushReq> req);
+
+    /**
+     * 队列获取数据
+     * @return int, S_OK: 成功, <0: 失败 or S_NO_DATA
+     */
+    int get_queue(Options opt, QueuePopReq req, out vector<QueueRsp> rsp);
+
+    /**
+     * 队列从头部获取数据并删除之
+     * @return int, S_OK: 成功, <0: 失败 or S_NO_DATA
+     */
+    int pop_queue(QueuePopReq req, out vector<QueueRsp> rsp);
+
+    /**
+     * 从队列中删除数据
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int deleteQueueData(vector<QueueIndex> req);
+
+    /**
+     * 从队列获取指定索引的数据
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int getQueueData(Options opt, vector<QueueIndex> req, out vector<QueueRsp> rsp);
+
+    /**
+     * 设置指定索引的值(数据不存在, 则添加之)
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int setQueueData(vector<QueueRsp> data);
+
+    /**
+     * 遍历队列, 分页遍历数据, 下一次传入上次返回的index, 第一次indexu传入空
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int transQueue(Options opt, QueuePageReq req, out vector<QueueRsp> data);
+
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * 批量一次性写数据, 要么成功, 要么失败(对于key/value模式因为时间戳, 版本不一致等原因可能导致个别数据写不成功, 因此rsp里面返回了每条数据的写的结果)
+     * @return int, S_OK: 成功, <0: 失败
+     */
+    int doBatch(BatchDataReq req, out BatchDataRsp rsp);
+};
+
+}; 
