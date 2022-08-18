@@ -97,14 +97,14 @@
         </el-table-column>
         <el-table-column :label="$t('storage.data.data')">
           <template slot-scope="scope">
-            <pre>{{ scope.row.svalue.data }}</pre>
+            <el-tooltip class="item" effect="light" placement="top-start">
+              <pre slot="content">{{ scope.row.svalue.data }}</pre>
+              <span>{{ scope.row.svalue.data.length }} bytes</span>
+            </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column
-          fixed="right"
-          :label="$t('storage.data.operator')"
-          width="150"
-        >
+
+        <el-table-column fixed="right" :label="$t('storage.data.operator')">
           <template slot-scope="scope">
             <el-popconfirm
               confirm-button-text="确定"
@@ -362,6 +362,7 @@ export default {
           );
         });
     },
+
     handleData(data) {
       if (data.length == 0) {
         this.$common.showSucc("no data~~~");
@@ -433,7 +434,9 @@ export default {
   },
 
   created() {},
-  mounted() {},
+  mounted() {
+    this.fetchData();
+  },
 };
 </script>
 

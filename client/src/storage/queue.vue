@@ -72,9 +72,13 @@
         </el-table-column>
         <el-table-column :label="$t('storage.data.data')">
           <template slot-scope="scope">
-            <pre>{{ scope.row.data }}</pre>
+            <el-tooltip class="item" effect="light" placement="top-start">
+              <pre slot="content">{{ scope.row.data }}</pre>
+              <span>{{ scope.row.data.length }} bytes</span>
+            </el-tooltip>
           </template>
         </el-table-column>
+
         <el-table-column
           fixed="right"
           :label="$t('storage.data.operator')"
@@ -372,7 +376,9 @@ export default {
   },
 
   created() {},
-  mounted() {},
+  mounted() {
+    this.fetchData();
+  },
 };
 </script>
 
