@@ -3,17 +3,21 @@ import { rpcClient } from "../common/rpc";
 import Koa from "koa";
 import TarsStream from "@tars/stream";
 import AdminService from "../common/AdminService";
+import logger from "../logger";
 
 export default class DataController {
 
     public static async hasRead(obj: string, uid: string) {
         let v = obj.split(".");
 
+        logger.debug(`has read, obj: ${obj}, uid: ${uid}`);
+
         return await AdminService.hasDevAuth(v[0], v[1], uid);
     }
 
     public static async hasWrite(obj: string, uid: string) {
         let v = obj.split(".");
+        logger.debug(`has write, obj: ${obj}, uid: ${uid}`);
 
         return await AdminService.hasOpeAuth(v[0], v[1], uid);
     }
@@ -25,9 +29,15 @@ export default class DataController {
         let options = new rpcClient.StorageProxy.Options();
         options.leader = true;
 
-        let rst = await rpcClient.getStoragePrx(obj).listTable(options);
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).listTable(options);
 
-        ctx.makeResObj(200, "", rst.response.arguments.tables.toObject());
+            ctx.makeResObj(200, "", rst.response.arguments.tables.toObject());
+        }
+        catch (e) {
+            logger.error(`list table error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
+        }
     }
 
 
@@ -38,9 +48,15 @@ export default class DataController {
         let options = new rpcClient.StorageProxy.Options();
         options.leader = true;
 
-        let rst = await rpcClient.getStoragePrx(obj).listQueue(options);
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).listQueue(options);
 
-        ctx.makeResObj(200, "", rst.response.arguments.queues.toObject());
+            ctx.makeResObj(200, "", rst.response.arguments.queues.toObject());
+        }
+        catch (e) {
+            logger.error(`list queue error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
+        }
     }
 
     public static async createData(ctx: Koa.Context) {
@@ -52,18 +68,25 @@ export default class DataController {
             return;
         }
 
-        let rst;
+        try {
+            let rst;
 
-        if (type == "table") {
-            rst = await rpcClient.getStoragePrx(obj).createTable(name);
-        } else {
-            rst = await rpcClient.getStoragePrx(obj).createQueue(name);
+            if (type == "table") {
+                rst = await rpcClient.getStoragePrx(obj).createTable(name);
+            } else {
+                rst = await rpcClient.getStoragePrx(obj).createQueue(name);
+            }
+
+            if (rst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
+
         }
-
-        if (rst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
+        catch (e) {
+            logger.error(`create storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
         }
     }
 
@@ -90,9 +113,16 @@ export default class DataController {
 
         // console.log(req.toObject());
 
-        let rst = await rpcClient.getStoragePrx(obj).trans(options, req);
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).trans(options, req);
 
-        ctx.makeResObj(200, "", rst.response.arguments.data.toObject());
+            ctx.makeResObj(200, "", rst.response.arguments.data.toObject());
+
+        }
+        catch (e) {
+            logger.error(`trans table storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
+        }
     }
 
 
@@ -114,11 +144,18 @@ export default class DataController {
         req.index = "" + index;
         req.include = include;
 
-        console.log(req.toObject());
+        // console.log(req.toObject());
 
-        let rst = await rpcClient.getStoragePrx(obj).transQueue(options, req);
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).transQueue(options, req);
 
-        ctx.makeResObj(200, "", rst.response.arguments.data.toObject());
+            ctx.makeResObj(200, "", rst.response.arguments.data.toObject());
+
+        }
+        catch (e) {
+            logger.error(`trans queue storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
+        }
     }
 
     public static async editQueueData(ctx: Koa.Context) {
@@ -141,12 +178,21 @@ export default class DataController {
         value.data.writeString(data.data);
 
         list.push(value);
-        let urst = await rpcClient.getStoragePrx(obj).setQueueData(list);
 
-        if (urst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
+        try {
+            let urst = await rpcClient.getStoragePrx(obj).setQueueData(list);
+
+            if (urst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
+
+
+        }
+        catch (e) {
+            logger.error(`set queue data storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
         }
     }
 
@@ -173,12 +219,19 @@ export default class DataController {
 
         // console.log(value.svalue.toObject());
 
-        let urst = await rpcClient.getStoragePrx(obj).set(value);
+        try {
+            let urst = await rpcClient.getStoragePrx(obj).set(value);
 
-        if (urst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
+            if (urst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
+
+        }
+        catch (e) {
+            logger.error(`set storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
         }
     }
 
@@ -198,12 +251,19 @@ export default class DataController {
 
         pushList.push(pushReq);
 
-        let urst = await rpcClient.getStoragePrx(obj).push_queue(pushList);
+        try {
+            let urst = await rpcClient.getStoragePrx(obj).push_queue(pushList);
 
-        if (urst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
+            if (urst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
+
+        }
+        catch (e) {
+            logger.error(`push queue storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
         }
     }
 
@@ -222,17 +282,25 @@ export default class DataController {
         let options = new rpcClient.StorageProxy.Options();
         options.leader = true;
 
-        let rst = await rpcClient.getStoragePrx(obj).get(options, req);
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).get(options, req);
 
-        if (rst.response.return == rpcClient.StorageProxy.STORAGE_RT.S_OK) {
-            ctx.makeResObj(500, "#storage.data.exists#", {});
-            return;
+            if (rst.response.return == rpcClient.StorageProxy.STORAGE_RT.S_OK) {
+                ctx.makeResObj(500, "#storage.data.exists#", {});
+                return;
+            }
+
+            // console.log(rst.response.return);
+            if (rst.response.return != rpcClient.StorageProxy.STORAGE_RT.S_NO_DATA) {
+                ctx.makeErrResObj();
+                return;
+            }
+
+
         }
-
-        // console.log(rst.response.return);
-        if (rst.response.return != rpcClient.StorageProxy.STORAGE_RT.S_NO_DATA) {
-            ctx.makeErrResObj();
-            return;
+        catch (e) {
+            logger.error(`get storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
         }
 
         let value = new rpcClient.StorageProxy.StorageData();
@@ -243,12 +311,19 @@ export default class DataController {
 
         value.svalue.data.writeString(data.data);
 
-        let urst = await rpcClient.getStoragePrx(obj).set(value);
+        try {
+            let urst = await rpcClient.getStoragePrx(obj).set(value);
 
-        if (urst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
+            if (urst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
+
+        }
+        catch (e) {
+            logger.error(`set storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
         }
     }
 
@@ -262,15 +337,20 @@ export default class DataController {
         req.table = table;
         req.mkey = mkey;
         req.ukey = ukey;
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).del(req);
 
-        let rst = await rpcClient.getStoragePrx(obj).del(req);
+            if (rst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
 
-        if (rst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
         }
-
+        catch (e) {
+            logger.error(`del storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
+        }
     }
 
     public static async deleteTable(ctx: Koa.Context) {
@@ -281,14 +361,20 @@ export default class DataController {
         }
         // console.log(obj, table);
 
-        let rst = await rpcClient.getStoragePrx(obj).deleteTable(table);
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).deleteTable(table);
 
-        if (rst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
+            if (rst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
+
         }
-
+        catch (e) {
+            logger.error(`delete table storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
+        }
     }
 
 
@@ -298,12 +384,20 @@ export default class DataController {
             ctx.makeNotAuthResObj();
             return;
         }
-        let rst = await rpcClient.getStoragePrx(obj).deleteQueue(queue);
 
-        if (rst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).deleteQueue(queue);
+
+            if (rst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
+
+        }
+        catch (e) {
+            logger.error(`delete queue storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
         }
     }
 
@@ -320,12 +414,19 @@ export default class DataController {
         let list = new TarsStream.List(rpcClient.StorageProxy.QueueIndex);
         list.push(req);
 
-        let rst = await rpcClient.getStoragePrx(obj).deleteQueueData(list);
+        try {
+            let rst = await rpcClient.getStoragePrx(obj).deleteQueueData(list);
 
-        if (rst.response.return != 0) {
-            ctx.makeErrResObj();
-        } else {
-            ctx.makeResObj(200, "", {});
+            if (rst.response.return != 0) {
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", {});
+            }
+
+        }
+        catch (e) {
+            logger.error(`delete queue data storege error, obj: ${obj}`);
+            ctx.makeResObj(500, "#storage.error#", {});
         }
     }
 

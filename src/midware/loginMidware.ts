@@ -14,9 +14,8 @@
  * specific language governing permissions and limitations under the License.
  */
 import Koa from "koa";
-// const _ = require('lodash');
-// const AdminService = require('../common/AdminService');
 import AdminService from "../app/common/AdminService";
+import logger from "../app/logger";
 
 let ignore = ['/plugins/base/storage/get_locale'];
 
@@ -48,30 +47,3 @@ export default async function LoginMidware(ctx: Koa.Context, next: Koa.Next) {
 
     await next();
 }
-
-// module.exports = async (ctx, next) => {
-
-// 	console.log(ctx.request.path);
-
-// 	if (ignore.indexOf(ctx.request.path) == -1) {
-
-// 		let ticket = ctx.paramsObj.ticket || ctx.cookies.get("ticket") || ctx.request.header["x-token"];
-
-// 		if (!ticket) {
-// 			ctx.makeResObj(403, "no auth", {});
-// 			return;
-// 		}
-
-// 		let uid = await AdminService.checkTicket(ticket);
-
-// 		if (!uid) {
-// 			ctx.makeResObj(403, "no auth", {});
-// 			return;
-// 		}
-
-// 		ctx.uid = uid;
-// 	}
-
-// 	await next();
-
-// };

@@ -224,6 +224,8 @@ export default {
     },
     addStorage(e) {
       this.storageDialog.show = true;
+      this.storageDialog.obj = "";
+      this.storageDialog.name = "";
       e.stopPropagation();
     },
     doAddStorage() {

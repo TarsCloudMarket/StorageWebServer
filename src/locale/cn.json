@@ -41,6 +41,7 @@
         "createTable": "创建数据表",
         "createQueue": "创建数据队列",
         "dataName": "数据名称",
+        "error": "访问存储服务失败",
         "data": {
             "add": "添加",
             "delete": "删除",
