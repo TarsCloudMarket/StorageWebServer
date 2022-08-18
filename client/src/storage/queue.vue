@@ -194,7 +194,9 @@ export default {
   watch: {
     $route(to, from) {
       //   console.log(from, to);
-      this.fetchData();
+      if (to.params.queue) {
+        this.fetchData();
+      }
     },
   },
   methods: {
@@ -202,22 +204,26 @@ export default {
       return this.$route.params.queue;
     },
     handleDeleteQueue() {
+      const loading = this.$Loading.show();
       this.$ajax
         .postJSON("/delete_queue", {
           obj: this.$route.params.obj,
           queue: this.$route.params.queue,
         })
         .then((data) => {
+          loading.hide();
           this.$common.showSucc();
           this.$emit("deleteTableQueue", this.$route.params.obj);
         })
         .catch((err) => {
+          loading.hide();
           this.$tip.error(
             `${this.$t("common.error")}: ${err.message || err.err_msg}`
           );
         });
     },
     doEditData() {
+      const loading = this.$Loading.show();
       if (this.editDialog.add) {
         this.$ajax
           .postJSON("/add_queue_data", {
@@ -226,6 +232,7 @@ export default {
             data: this.editDialog.model,
           })
           .then((data) => {
+            loading.hide();
             this.fetchData();
             this.$common.showSucc();
             this.editDialog.show = false;
@@ -233,6 +240,7 @@ export default {
             this.editDialog.model = {};
           })
           .catch((err) => {
+            loading.hide();
             this.$tip.error(
               `${this.$t("common.error")}: ${err.message || err.err_msg}`
             );
@@ -245,6 +253,7 @@ export default {
             data: this.editDialog.model,
           })
           .then((data) => {
+            loading.hide();
             this.fetchData();
             this.$common.showSucc();
             this.editDialog.show = false;
@@ -252,6 +261,7 @@ export default {
             this.editDialog.model = {};
           })
           .catch((err) => {
+            loading.hide();
             this.$tip.error(
               `${this.$t("common.error")}: ${err.message || err.err_msg}`
             );
@@ -278,6 +288,7 @@ export default {
       };
     },
     handleDelete(row) {
+      const loading = this.$Loading.show();
       this.$ajax
         .postJSON("/delete_queue_data", {
           obj: this.$route.params.obj,
@@ -285,10 +296,12 @@ export default {
           index: row.index,
         })
         .then((data) => {
+          loading.hide();
           this.fetchData();
           this.$common.showSucc();
         })
         .catch((err) => {
+          loading.hide();
           this.$tip.error(
             `${this.$t("common.error")}: ${err.message || err.err_msg}`
           );
@@ -314,6 +327,7 @@ export default {
       return data;
     },
     moreData() {
+      const loading = this.$Loading.show();
       this.$ajax
         .postJSON("/list_queue_data", {
           obj: this.$route.params.obj,
@@ -325,14 +339,17 @@ export default {
         })
         .then((data) => {
           this.dataList = this.dataList.concat(this.handleData(data));
+          loading.hide();
         })
         .catch((err) => {
+          loading.hide();
           this.$tip.error(
             `${this.$t("common.error")}: ${err.message || err.err_msg}`
           );
         });
     },
     fetchData() {
+      const loading = this.$Loading.show();
       this.$ajax
         .postJSON("/list_queue_data", {
           obj: this.$route.params.obj,
@@ -344,6 +361,7 @@ export default {
         })
         .then((data) => {
           this.dataList = this.handleData(data);
+          loading.hide();
         })
         .catch((err) => {
           this.$tip.error(

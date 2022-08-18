@@ -14,7 +14,14 @@
             v-bind:key="t.id"
           >
             <span>
-              {{ t.name }}
+              <el-tooltip
+                class="item"
+                effect="light"
+                :content="t.obj"
+                placement="top-start"
+              >
+                <span>{{ t.name }}</span>
+              </el-tooltip>
               <i
                 class="el-icon-delete"
                 style="float: right; line-height: 50px; font-size: 10px"
@@ -30,7 +37,11 @@
       style="background-color: rgb(238, 241, 246)"
       v-if="obj"
     >
-      <el-menu :default-openeds="['1']" @select="handleTableSelect">
+      <el-menu
+        :default-openeds="['1']"
+        :default-active="table"
+        @select="handleTableSelect"
+      >
         <el-submenu index="1">
           <template slot="title"
             ><i class="el-icon-plus" @click="addTable"></i
@@ -48,7 +59,11 @@
         </el-submenu>
       </el-menu>
 
-      <el-menu :default-openeds="['1']" @select="handleQueueSelect">
+      <el-menu
+        :default-openeds="['1']"
+        :default-active="queue"
+        @select="handleQueueSelect"
+      >
         <el-submenu index="1">
           <template slot="title"
             ><i class="el-icon-plus" @click="addQueue"></i
@@ -68,10 +83,12 @@
     </el-aside>
 
     <el-main>
-      <router-view
-        v-if="obj && storage"
-        @deleteTableQueue="deleteTableQueue"
-      ></router-view>
+      <keep-alive>
+        <router-view
+          v-if="obj && (table || queue)"
+          @deleteTableQueue="deleteTableQueue"
+        ></router-view>
+      </keep-alive>
     </el-main>
 
     <el-dialog
@@ -138,7 +155,8 @@ export default {
   data() {
     return {
       obj: "",
-      storage: "",
+      table: "",
+      queue: "",
       tableList: {},
       queueList: {},
       storageList: [],
@@ -158,27 +176,37 @@ export default {
       },
     };
   },
+  watch: {
+    $route(to, from) {
+      if (to.name == "table") {
+        this.table = to.params.table;
+      } else {
+        this.table = "";
+      }
+
+      if (to.name == "queue") {
+        this.queue = to.params.queue;
+      } else {
+        this.queue = "";
+      }
+    },
+  },
   methods: {
     handleStorageSelect(key, keyPath) {
       //   console.log("handleSelect:", key);
       this.obj = key;
-      this.storage = "";
       this.fetchTable(this.obj);
       this.fetchQueue(this.obj);
     },
     handleQueueSelect(key, keyPath) {
       //   console.log("handleQueueSelect:", key);
-      this.storage = key;
-      this.$router.push(`/queue/${this.obj}/${key}`);
+      this.$router.replace(`/queue/${this.obj}/${key}`);
     },
     handleTableSelect(key, keyPath) {
       //   console.log("handleTableSelect:", key);
-      this.storage = key;
-      this.$router.push(`/table/${this.obj}/${key}`);
+      this.$router.replace(`/table/${this.obj}/${key}`);
     },
     deleteTableQueue(obj) {
-      this.storage = "";
-
       if (this.$route.name == "table") {
         this.fetchTable(obj);
       } else {
@@ -186,13 +214,15 @@ export default {
       }
     },
     fetchData() {
+      const loading = this.$Loading.show();
       this.$ajax
         .getJSON("/list_storage")
         .then((data) => {
+          loading.hide();
           this.storageList = data;
-          //   console.log(data);
         })
         .catch((err) => {
+          loading.hide();
           this.$tip.error(
             `${this.$t("common.error")}: ${err.message || err.err_msg}`
           );
@@ -317,7 +347,18 @@ export default {
   },
   mounted() {
     this.obj = this.$route.params.obj;
-    this.storage = this.$route.params[this.$route.name];
+
+    if (this.$route.name == "table") {
+      this.table = this.$route.params.table;
+    } else {
+      this.table = "";
+    }
+
+    if (this.$route.name == "queue") {
+      this.queue = this.$route.params.queue;
+    } else {
+      this.queue = "";
+    }
 
     this.fetchData();
 
