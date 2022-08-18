@@ -1,10 +1,8 @@
 import Koa from "koa";
 import * as path from "path";
 import bodyparser from "koa-bodyparser";
-// import staticRouter from "koa-static";
-import { Serve } from "static-koa-router";
-import KoaRouter from "koa-router";
-
+import staticRouter from "koa-static";
+import mount from 'koa-mount';
 import { pageRouter, apiRouter } from "./midware";
 import { Config } from '@tars/utils';
 import webConf from './config/webConf';
@@ -43,18 +41,10 @@ const appInitialize = async () => {
     //国际化多语言中间件
     app.use(localeMidware);
 
-    // app.use(staticRouter(path.join(__dirname, "../client/dist"), { maxage: 7 * 24 * 60 * 60 * 1000 }));
     app.use(pageRouter.routes());
     app.use(apiRouter.routes());
 
-    //注意这里路由前缀一样的, 接口处理以后不要next, 否则匹配到静态路由了
-    const staticRouter = new KoaRouter({
-        prefix: webConf.config.path
-    });
-
-    Serve(path.join(__dirname, '../client/dist'), staticRouter);
-
-    app.use(staticRouter.routes());
+    app.use(mount(webConf.config.path, staticRouter(path.join(__dirname, "../client/dist"), { maxage: 7 * 24 * 60 * 60 * 1000 })));
 };
 
 
