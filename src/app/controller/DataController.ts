@@ -63,7 +63,7 @@ export default class DataController {
 
         let { obj, type, name } = ctx.paramsObj;
 
-        if (await this.hasRead(obj, ctx.uid)) {
+        if (!await this.hasRead(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -94,7 +94,7 @@ export default class DataController {
 
         let { obj, table, mkey = "", ukey = "", forward = true, include = false, limit = 50, over = false } = ctx.paramsObj;
 
-        if (await this.hasRead(obj, ctx.uid)) {
+        if (!await this.hasRead(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -129,7 +129,7 @@ export default class DataController {
     public static async listQueueData(ctx: Koa.Context) {
 
         let { obj, queue, index = "", forward = true, limit = 50, include = false } = ctx.paramsObj;
-        if (await this.hasRead(obj, ctx.uid)) {
+        if (!await this.hasRead(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -161,7 +161,7 @@ export default class DataController {
     public static async editQueueData(ctx: Koa.Context) {
 
         let { obj, queue, data } = ctx.paramsObj;
-        if (await this.hasWrite(obj, ctx.uid)) {
+        if (!await this.hasWrite(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -198,7 +198,7 @@ export default class DataController {
 
     public static async editTableData(ctx: Koa.Context) {
         let { obj, table, data } = ctx.paramsObj;
-        if (await this.hasWrite(obj, ctx.uid)) {
+        if (!await this.hasWrite(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -237,7 +237,7 @@ export default class DataController {
 
     public static async addQueueData(ctx: Koa.Context) {
         let { obj, queue, data } = ctx.paramsObj;
-        if (await this.hasWrite(obj, ctx.uid)) {
+        if (!await this.hasWrite(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -270,7 +270,7 @@ export default class DataController {
 
     public static async addTableData(ctx: Koa.Context) {
         let { obj, table, data } = ctx.paramsObj;
-        if (await this.hasWrite(obj, ctx.uid)) {
+        if (!await this.hasWrite(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -329,7 +329,7 @@ export default class DataController {
 
     public static async deleteTableData(ctx: Koa.Context) {
         let { obj, table, mkey = "", ukey = "" } = ctx.paramsObj;
-        if (await this.hasWrite(obj, ctx.uid)) {
+        if (!await this.hasWrite(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -355,7 +355,7 @@ export default class DataController {
 
     public static async deleteTable(ctx: Koa.Context) {
         let { obj, table } = ctx.paramsObj;
-        if (await this.hasWrite(obj, ctx.uid)) {
+        if (!await this.hasWrite(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -380,7 +380,7 @@ export default class DataController {
 
     public static async deleteQueue(ctx: Koa.Context) {
         let { obj, queue } = ctx.paramsObj;
-        if (await this.hasWrite(obj, ctx.uid)) {
+        if (!await this.hasWrite(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
@@ -403,7 +403,7 @@ export default class DataController {
 
     public static async deleteQueueData(ctx: Koa.Context) {
         let { obj, queue, index } = ctx.paramsObj;
-        if (await this.hasWrite(obj, ctx.uid)) {
+        if (!await this.hasWrite(obj, ctx.uid)) {
             ctx.makeNotAuthResObj();
             return;
         }
