@@ -369,9 +369,8 @@ export default {
       }
       data.forEach((item) => {
         let str = "";
-        item.svalue.data.data.forEach((e) => {
-          str += String.fromCharCode(e);
-        });
+
+        str = Buffer.from(item.svalue.data.data).toString();
 
         try {
           str = JSON.parse(str);
