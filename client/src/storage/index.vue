@@ -320,8 +320,11 @@ export default {
     this.storage = this.$route.params[this.$route.name];
 
     this.fetchData();
-    this.fetchTable(this.obj);
-    this.fetchQueue(this.obj);
+
+    if (this.obj) {
+      this.fetchTable(this.obj);
+      this.fetchQueue(this.obj);
+    }
   },
 };
 </script>
