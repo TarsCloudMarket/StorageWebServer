@@ -12,14 +12,23 @@ export default class DataController {
 
         logger.debug(`has read, obj: ${obj}, uid: ${uid}`);
 
-        return await AdminService.hasDevAuth(v[0], v[1], uid);
+        let flag = await AdminService.hasDevAuth(v[0], v[1], uid);
+
+        if (!flag) {
+            logger.error(`has read, obj: ${obj}, uid: ${uid} no auth`);
+        }
+        return flag;
     }
 
     public static async hasWrite(obj: string, uid: string) {
         let v = obj.split(".");
         logger.debug(`has write, obj: ${obj}, uid: ${uid}`);
 
-        return await AdminService.hasOpeAuth(v[0], v[1], uid);
+        let flag = await AdminService.hasOpeAuth(v[0], v[1], uid);
+        if (!flag) {
+            logger.error(`has read, obj: ${obj}, uid: ${uid} no auth`);
+        }
+        return flag;
     }
 
     public static async listTable(ctx: Koa.Context) {
@@ -31,8 +40,14 @@ export default class DataController {
 
         try {
             let rst = await rpcClient.getStoragePrx(obj).listTable(options);
+            if (rst.response.return != 0) {
 
-            ctx.makeResObj(200, "", rst.response.arguments.tables.toObject());
+                logger.error(`listTable error, obj: ${obj}, ret:${rst.response.return}`);
+
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", rst.response.arguments.tables.toObject());
+            }
         }
         catch (e) {
             logger.error(`list table error, obj: ${obj}`);
@@ -50,8 +65,14 @@ export default class DataController {
 
         try {
             let rst = await rpcClient.getStoragePrx(obj).listQueue(options);
+            if (rst.response.return != 0) {
 
-            ctx.makeResObj(200, "", rst.response.arguments.queues.toObject());
+                logger.error(`listQueue error, obj: ${obj}, ret:${rst.response.return}`);
+
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", rst.response.arguments.queues.toObject());
+            }
         }
         catch (e) {
             logger.error(`list queue error, obj: ${obj}`);
@@ -64,6 +85,7 @@ export default class DataController {
         let { obj, type, name } = ctx.paramsObj;
 
         if (!await this.hasRead(obj, ctx.uid)) {
+
             ctx.makeNotAuthResObj();
             return;
         }
@@ -77,7 +99,10 @@ export default class DataController {
                 rst = await rpcClient.getStoragePrx(obj).createQueue(name);
             }
 
-            if (rst.response.return != 0) {
+            if (rst.response.return != 0 && rst.response.return != rpcClient.StorageProxy.STORAGE_RT.S_TABLE_EXIST && rst.response.return != rpcClient.StorageProxy.STORAGE_RT.S_QUEUE_EXIST) {
+
+                logger.error(`createTable error, obj: ${obj}, ret:${rst.response.return}`);
+
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
@@ -111,12 +136,14 @@ export default class DataController {
         req.include = include;
         req.over = over;
 
-        // console.log(req.toObject());
-
         try {
             let rst = await rpcClient.getStoragePrx(obj).trans(options, req);
-
-            ctx.makeResObj(200, "", rst.response.arguments.data.toObject());
+            if (rst.response.return != 0) {
+                logger.error(`listTableData error, obj: ${obj}, ret:${rst.response.return}`);
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", rst.response.arguments.data.toObject());
+            }
 
         }
         catch (e) {
@@ -144,12 +171,16 @@ export default class DataController {
         req.index = "" + index;
         req.include = include;
 
-        // console.log(req.toObject());
-
         try {
             let rst = await rpcClient.getStoragePrx(obj).transQueue(options, req);
+            if (rst.response.return != 0) {
 
-            ctx.makeResObj(200, "", rst.response.arguments.data.toObject());
+                logger.error(`listQueueData error, obj: ${obj}, ret:${rst.response.return}`);
+
+                ctx.makeErrResObj();
+            } else {
+                ctx.makeResObj(200, "", rst.response.arguments.data.toObject());
+            }
 
         }
         catch (e) {
@@ -180,9 +211,9 @@ export default class DataController {
         list.push(value);
 
         try {
-            let urst = await rpcClient.getStoragePrx(obj).setQueueData(list);
-
-            if (urst.response.return != 0) {
+            let rst = await rpcClient.getStoragePrx(obj).setQueueData(list);
+            if (rst.response.return != 0) {
+                logger.error(`editQueueData error, obj: ${obj}, ret:${rst.response.return}`);
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
@@ -220,9 +251,11 @@ export default class DataController {
         // console.log(value.svalue.toObject());
 
         try {
-            let urst = await rpcClient.getStoragePrx(obj).set(value);
+            let rst = await rpcClient.getStoragePrx(obj).set(value);
+            if (rst.response.return != 0) {
 
-            if (urst.response.return != 0) {
+                logger.error(`editTableData error, obj: ${obj}, ret:${rst.response.return}`);
+
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
@@ -252,9 +285,10 @@ export default class DataController {
         pushList.push(pushReq);
 
         try {
-            let urst = await rpcClient.getStoragePrx(obj).push_queue(pushList);
+            let rst = await rpcClient.getStoragePrx(obj).push_queue(pushList);
 
-            if (urst.response.return != 0) {
+            if (rst.response.return != 0) {
+                logger.error(`addQueueData error, obj: ${obj}, ret:${rst.response.return}`);
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
@@ -292,6 +326,7 @@ export default class DataController {
 
             // console.log(rst.response.return);
             if (rst.response.return != rpcClient.StorageProxy.STORAGE_RT.S_NO_DATA) {
+                logger.error(`addTableData error, obj: ${obj}, ret:${rst.response.return}`);
                 ctx.makeErrResObj();
                 return;
             }
@@ -315,6 +350,7 @@ export default class DataController {
             let urst = await rpcClient.getStoragePrx(obj).set(value);
 
             if (urst.response.return != 0) {
+                logger.error(`addTableData error, obj: ${obj}, ret:${urst.response.return}`);
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
@@ -341,6 +377,7 @@ export default class DataController {
             let rst = await rpcClient.getStoragePrx(obj).del(req);
 
             if (rst.response.return != 0) {
+                logger.error(`deleteTableData error, obj: ${obj}, ret:${rst.response.return}`);
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
@@ -365,6 +402,7 @@ export default class DataController {
             let rst = await rpcClient.getStoragePrx(obj).deleteTable(table);
 
             if (rst.response.return != 0) {
+                logger.error(`deleteTable error, obj: ${obj}, ret:${rst.response.return}`);
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
@@ -389,6 +427,7 @@ export default class DataController {
             let rst = await rpcClient.getStoragePrx(obj).deleteQueue(queue);
 
             if (rst.response.return != 0) {
+                logger.error(`deleteQueue error, obj: ${obj}, ret:${rst.response.return}`);
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
@@ -418,6 +457,7 @@ export default class DataController {
             let rst = await rpcClient.getStoragePrx(obj).deleteQueueData(list);
 
             if (rst.response.return != 0) {
+                logger.error(`deleteQueueData error, obj: ${obj}, ret:${rst.response.return}`);
                 ctx.makeErrResObj();
             } else {
                 ctx.makeResObj(200, "", {});
