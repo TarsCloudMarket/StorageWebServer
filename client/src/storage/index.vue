@@ -1,5 +1,5 @@
 <template>
-  <el-container style="border: 1px solid #eee; min-height: 800px" id="index">
+  <el-container style="border: 1px solid #eee; min-height: 500px" id="index">
     <el-aside width="200px" style="background-color: rgb(238, 241, 246)">
       <el-menu :default-openeds="['default']" @select="handleStorageSelect">
         <el-submenu index="default">
