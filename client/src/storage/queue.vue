@@ -317,7 +317,7 @@ export default {
       }
       data.forEach((item) => {
         let str = "";
-        str = Buffer.from(item.svalue.data.data).toString();
+        str = Buffer.from(item.data.data).toString();
 
         try {
           str = JSON.parse(str);
